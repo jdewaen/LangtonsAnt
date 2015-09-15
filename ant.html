@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        var timer = null;
+        var ctx = null;
+        var world = [];
+        var colormap = [];
+        var current_color = 0;
+        var size = 400;
+        var speed = 100;
+        var pixelsize = 2;
+        var framerate = 60;
+        var changed_blocks = [];
+        var ant = {
+            x: Math.floor(size / 2),
+            y: Math.floor(size / 2),
+            dir: "N"
+        };
+        function start() {
+            stop();
+            timer = setInterval(function () {
+                step(world, ant);
+            }, 1000 / framerate);
+        }
+
+        function stop() {
+            clearInterval(timer);
+        }
+        function clearColorMap() {
+            current_color = 0;
+            for (var i = 0; i < size; i++) {
+                colormap[i] = [];
+                for (var j = 0; j < size; j++) {
+                    colormap[i][j] = undefined;
+                }
+            }
+        }
+        function clearWorld() {
+            clearColorMap();
+            for (var i = 0; i < size; i++) {
+                world[i] = [];
+                for (var j = 0; j < size; j++) {
+                    world[i][j] = false;
+                }
+            }
+            draw(true);
+        }
+        function checkers() {
+            clearColorMap();
+            for (var i = 0; i < size; i++) {
+                world[i] = [];
+                for (var j = 0; j < size; j++) {
+                    world[i][j] = ( (i + j) % 2 == 0);
+                }
+            }
+            draw(true);
+        }
+        function lines() {
+            clearColorMap();
+            for (var i = 0; i < size; i++) {
+                world[i] = [];
+                for (var j = 0; j < size; j++) {
+                    world[i][j] = ( j % 2 == 0);
+                }
+            }
+            draw(true);
+        }
+        function blocks() {
+            clearColorMap();
+            for (var i = 0; i < size; i++) {
+                world[i] = [];
+                for (var j = 0; j < size; j++) {
+                    world[i][j] = (Math.floor(i / 3) % 2 == 0 && Math.floor(j / 3) % 2);
+                }
+            }
+            draw(true);
+        }
+        function setup() {
+            var canvas = document.getElementById("canvas");
+            canvas.addEventListener("click", toggleCell);
+            ctx = canvas.getContext("2d");
+        }
+        function toggleCell(e) {
+            var cursorX = Math.floor((e.clientX - e.target.offsetLeft) / pixelsize);
+            var cursorY = Math.floor((e.clientY - e.target.offsetTop) / pixelsize);
+            world[cursorX][cursorY] = !world[cursorX][cursorY];
+            changed(cursorX, cursorY);
+            draw(false);
+        }
+        function draw(clear) {
+
+            if (clear) {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, size * pixelsize, size * pixelsize);
+
+                for (var i = 0; i < size; i++) {
+                    for (var j = 0; j < size; j++) {
+                        drawCell(i, j)
+                    }
+                }
+                changed_blocks.length = 0;
+            } else {
+                while (changed_blocks.length > 0) {
+                    var cell = changed_blocks.pop();
+                    drawCell(cell[0], cell[1]);
+                }
+            }
+            var color = colormap[ant.x][ant.y];
+            if (color == undefined) {
+                color = 0;
+            } else {
+                color += 90;
+            }
+//            var color = 0;
+            ctx.fillStyle = "hsl(" + color + ",100%, 50%)";
+            ctx.fillRect(ant.x * pixelsize, ant.y * pixelsize, pixelsize, pixelsize);
+        }
+        function drawCell(i, j) {
+            if (colormap[i][j] == undefined) {
+                ctx.fillStyle = "#000000";
+                if (world[i][j]) {
+                    ctx.fillRect(i * pixelsize, j * pixelsize, pixelsize, pixelsize);
+                }
+            } else {
+                var color = colormap[i][j];
+                if (world[i][j]) {
+                    ctx.fillStyle = "hsl(" + color + ",100%, 50%)";
+                } else {
+                    ctx.fillStyle = "hsl(" + color + ",100%, 75%)";
+                }
+                ctx.fillRect(i * pixelsize, j * pixelsize, pixelsize, pixelsize);
+            }
+        }
+        function step() {
+            for(var i = 0; i < speed;i++) {
+                turn(world[ant.x][ant.y], ant);
+                world[ant.x][ant.y] = !world[ant.x][ant.y];
+                move(ant);
+            }
+            draw(false);
+        }
+        function turn(direction, ant) {
+            var left = {N: "W", E: "N", S: "E", W: "S"};
+            var right = {N: "E", E: "S", S: "W", W: "N"};
+            var dir;
+            if (direction) {
+                dir = right;
+                current_color += 1;
+            } else {
+                dir = left;
+                current_color -= 1;
+            }
+            ant.dir = dir[ant.dir];
+            current_color %= 360;
+            colormap[ant.x][ant.y] = current_color;
+        }
+        function move(ant) {
+            changed(ant.x, ant.y);
+            switch (ant.dir) {
+                case "N":
+                    ant.y -= 1;
+                    break;
+                case "S":
+                    ant.y += 1;
+                    break;
+                case "W":
+                    ant.x -= 1;
+                    break;
+                case "E":
+                    ant.x += 1;
+                    break;
+            }
+            ant.x = (ant.x + size) % size;
+            ant.y = (ant.y + size) % size;
+        }
+        function changed(x, y) {
+            changed_blocks.push([x, y]);
+
+        }
+
+    </script>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body onload="setup();clearWorld();">
+
+<button onclick="start()">Start</button>
+<button onclick="stop()">Stop</button>
+<button onclick="stop();step()">Step</button>
+<br><br>
+<button onclick="clearWorld()">Clear</button>
+<button onclick="checkers()">Checkers</button>
+<button onclick="lines()">Lines</button>
+<button onclick="blocks()">Blocks</button>
+<br>
+<canvas id="canvas" width="800" height="800"></canvas>
+</body>
+</html>
